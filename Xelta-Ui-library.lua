@@ -754,10 +754,6 @@ function UILibrary:CreateToggle(tab, config)
     
     return ToggleData
 end
-
--- Return library for Part 3
-return UILibrary
-
 -- ================================
 -- ASTDX Custom UI Library - Part 4
 -- Slider & Dropdown Components

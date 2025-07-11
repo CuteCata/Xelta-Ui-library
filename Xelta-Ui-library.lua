@@ -67,7 +67,15 @@ end
 
 local function CreateGradient(parent, colors, rotation)
     local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new(colors)
+    
+    -- แปลง Color3 array เป็น ColorSequenceKeypoints
+    local keypoints = {}
+    for i, color in ipairs(colors) do
+        local time = (i - 1) / (#colors - 1)
+        table.insert(keypoints, ColorSequenceKeypoint.new(time, color))
+    end
+    
+    gradient.Color = ColorSequence.new(keypoints)
     gradient.Rotation = rotation or 0
     gradient.Parent = parent
     return gradient

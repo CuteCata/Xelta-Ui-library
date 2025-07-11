@@ -686,6 +686,11 @@ function UILibrary:CreateToggle(tab, config)
             local bgTween = CreateTween(ToggleBG, {
                 BackgroundColor3 = Colors.Success
             }, 0.2)
+           -- ================================
+-- ASTDX Custom UI Library - Part 3 (ส่วนที่ขาด)
+-- ================================
+
+-- ต่อจาก ToggleSwitch ที่ขาดไป
             local switchTween = CreateTween(ToggleSwitch, {
                 Position = UDim2.new(0, 22, 0, 2)
             }, 0.2)
@@ -750,139 +755,8 @@ function UILibrary:CreateToggle(tab, config)
     return ToggleData
 end
 
--- Checkbox Creation Function (Alternative to Toggle)
-function UILibrary:CreateCheckbox(tab, config)
-    config = config or {}
-    
-    local CheckboxData = {
-        Name = config.Name or "Checkbox",
-        CurrentValue = config.CurrentValue or false,
-        Callback = config.Callback or function() end,
-        Tab = tab,
-        Flag = config.Flag or ""
-    }
-    
-    -- Checkbox Frame
-    local CheckboxFrame = Instance.new("Frame")
-    CheckboxFrame.Name = "Checkbox_" .. CheckboxData.Name
-    CheckboxFrame.Size = UDim2.new(1, 0, 0, 35)
-    CheckboxFrame.BackgroundColor3 = Colors.Card
-    CheckboxFrame.BorderSizePixel = 0
-    CheckboxFrame.Parent = tab.Content
-    
-    CreateCorner(CheckboxFrame, 6)
-    CreateStroke(CheckboxFrame, Colors.Border, 1)
-    
-    -- Checkbox Box
-    local CheckboxBox = Instance.new("Frame")
-    CheckboxBox.Name = "CheckboxBox"
-    CheckboxBox.Size = UDim2.new(0, 20, 0, 20)
-    CheckboxBox.Position = UDim2.new(0, 10, 0.5, -10)
-    CheckboxBox.BackgroundColor3 = Colors.Secondary
-    CheckboxBox.BorderSizePixel = 0
-    CheckboxBox.Parent = CheckboxFrame
-    
-    CreateCorner(CheckboxBox, 4)
-    CreateStroke(CheckboxBox, Colors.Border, 1)
-    
-    -- Checkbox Check Mark
-    local CheckMark = Instance.new("TextLabel")
-    CheckMark.Name = "CheckMark"
-    CheckMark.Size = UDim2.new(1, 0, 1, 0)
-    CheckMark.BackgroundTransparency = 1
-    CheckMark.Text = "✓"
-    CheckMark.TextColor3 = Colors.Success
-    CheckMark.TextSize = 14
-    CheckMark.Font = Enum.Font.GothamBold
-    CheckMark.TextScaled = true
-    CheckMark.Visible = CheckboxData.CurrentValue
-    CheckMark.Parent = CheckboxBox
-    
-    -- Checkbox Label
-    local CheckboxLabel = Instance.new("TextLabel")
-    CheckboxLabel.Name = "Label"
-    CheckboxLabel.Size = UDim2.new(1, -45, 1, 0)
-    CheckboxLabel.Position = UDim2.new(0, 40, 0, 0)
-    CheckboxLabel.BackgroundTransparency = 1
-    CheckboxLabel.Text = CheckboxData.Name
-    CheckboxLabel.TextColor3 = Colors.Text
-    CheckboxLabel.TextSize = 12
-    CheckboxLabel.TextXAlignment = Enum.TextXAlignment.Left
-    CheckboxLabel.Font = Enum.Font.Gotham
-    CheckboxLabel.Parent = CheckboxFrame
-    
-    -- Checkbox Button (Invisible click detector)
-    local CheckboxButton = Instance.new("TextButton")
-    CheckboxButton.Name = "CheckboxButton"
-    CheckboxButton.Size = UDim2.new(1, 0, 1, 0)
-    CheckboxButton.BackgroundTransparency = 1
-    CheckboxButton.Text = ""
-    CheckboxButton.Parent = CheckboxFrame
-    
-    -- Checkbox Function
-    local function ToggleCheckbox()
-        CheckboxData.CurrentValue = not CheckboxData.CurrentValue
-        
-        if CheckboxData.CurrentValue then
-            -- Checked State
-            CheckMark.Visible = true
-            local checkTween = CreateTween(CheckboxBox, {
-                BackgroundColor3 = Colors.Success
-            }, 0.2)
-            checkTween:Play()
-        else
-            -- Unchecked State
-            CheckMark.Visible = false
-            local uncheckTween = CreateTween(CheckboxBox, {
-                BackgroundColor3 = Colors.Secondary
-            }, 0.2)
-            uncheckTween:Play()
-        end
-        
-        -- Execute callback
-        CheckboxData.Callback(CheckboxData.CurrentValue)
-    end
-    
-    -- Set initial state
-    if CheckboxData.CurrentValue then
-        CheckboxBox.BackgroundColor3 = Colors.Success
-        CheckMark.Visible = true
-    end
-    
-    -- Checkbox Hover Effects
-    CheckboxButton.MouseEnter:Connect(function()
-        local hoverTween = CreateTween(CheckboxFrame, {
-            BackgroundColor3 = Colors.Hover
-        }, 0.15)
-        hoverTween:Play()
-    end)
-    
-    CheckboxButton.MouseLeave:Connect(function()
-        local leaveTween = CreateTween(CheckboxFrame, {
-            BackgroundColor3 = Colors.Card
-        }, 0.15)
-        leaveTween:Play()
-    end)
-    
-    -- Checkbox Click Handler
-    CheckboxButton.MouseButton1Click:Connect(ToggleCheckbox)
-    
-    -- Store references
-    CheckboxData.Frame = CheckboxFrame
-    CheckboxData.Box = CheckboxBox
-    CheckboxData.CheckMark = CheckMark
-    CheckboxData.Label = CheckboxLabel
-    CheckboxData.Button = CheckboxButton
-    CheckboxData.Toggle = ToggleCheckbox
-    
-    -- Add to tab elements
-    table.insert(tab.Elements, CheckboxData)
-    
-    -- Update tab content canvas size
-    tab.Content.CanvasSize = UDim2.new(0, 0, 0, tab.Layout.AbsoluteContentSize.Y)
-    
-    return CheckboxData
-end
+-- Return library for Part 3
+return UILibrary
 
 -- ================================
 -- ASTDX Custom UI Library - Part 4
@@ -5792,3 +5666,5 @@ function UILibrary:CreateWindow(config)
    
    return window
 end
+
+return UILibrary

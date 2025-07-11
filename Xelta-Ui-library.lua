@@ -2519,7 +2519,7 @@ function UILibrary:AddTooltip(element, text)
 end
 
 -- Search Box Creation Function (continued)
-function :CreateSearchBox(tab, config)
+function UILibrary:CreateSearchBox(tab, config)
    config = config or {}
    
    local SearchBoxData = {

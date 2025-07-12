@@ -7,6 +7,17 @@
     local Window = UI:CreateWindow("Script Name")
     local Tab = Window:CreateTab("Home", "house")
     Tab:CreateButton("Click Me", function() print("Clicked!") end)
+    
+    Mobile Features:
+    - ปุ่ม Toggle (วงกลม) สำหรับ hide/show UI 
+    - สามารถลากปุ่ม Toggle ไปวางตำแหน่งที่ต้องการได้
+    - UI ปรับขนาดอัตโนมัติตามหน้าจอมือถือ
+    - ระบบ Dragging ที่ลื่นไหลสำหรับ Touch Screen
+    
+    PC Features:
+    - กด RightShift เพื่อ toggle UI
+    - รองรับ Mouse Dragging แบบ smooth
+    - มี Blur Effect เมื่อเปิด UI
 ]]
 
 -- Services และ Dependencies
@@ -98,22 +109,43 @@ function Utility:Tween(instance, properties, duration)
     return tween
 end
 
--- Make Draggable (รองรับทั้ง PC และ Mobile)
+-- Make Draggable (รองรับทั้ง PC และ Mobile พร้อม smooth dragging)
 function Utility:MakeDraggable(frame, dragHandle)
     dragHandle = dragHandle or frame
     
     local dragging = false
     local dragStart = nil
     local startPos = nil
+    local dragConnection = nil
     
     local function update(input)
+        if not dragging then return end
+        
         local delta = input.Position - dragStart
-        frame.Position = UDim2.new(
+        local newPosition = UDim2.new(
             startPos.X.Scale,
             startPos.X.Offset + delta.X,
             startPos.Y.Scale,
             startPos.Y.Offset + delta.Y
         )
+        
+        -- จำกัดไม่ให้ frame หลุดออกนอกหน้าจอ
+        local screenSize = workspace.CurrentCamera.ViewportSize
+        local frameSize = frame.AbsoluteSize
+        
+        local minX = -frameSize.X / 2
+        local maxX = screenSize.X - frameSize.X / 2
+        local minY = 0
+        local maxY = screenSize.Y - frameSize.Y / 2
+        
+        newPosition = UDim2.new(
+            0,
+            math.clamp(newPosition.X.Offset + frameSize.X / 2, minX, maxX) - frameSize.X / 2,
+            0,
+            math.clamp(newPosition.Y.Offset + frameSize.Y / 2, minY, maxY) - frameSize.Y / 2
+        )
+        
+        frame.Position = newPosition
     end
     
     dragHandle.InputBegan:Connect(function(input)
@@ -123,20 +155,109 @@ function Utility:MakeDraggable(frame, dragHandle)
             dragStart = input.Position
             startPos = frame.Position
             
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
+            -- สำหรับ Mobile: ใช้ RenderStepped เพื่อความลื่นไหล
+            if input.UserInputType == Enum.UserInputType.Touch then
+                dragConnection = RunService.RenderStepped:Connect(function()
+                    if dragging then
+                        local touch = UserInputService:GetTouchingParts()
+                        if #touch > 0 then
+                            update({Position = UserInputService:GetMouseLocation()})
+                        end
+                    end
+                end)
+            end
         end
     end)
     
+    dragHandle.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            if dragConnection then
+                dragConnection:Disconnect()
+                dragConnection = nil
+            end
+        end
+    end)
+    
+    -- สำหรับ PC
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
-                        input.UserInputType == Enum.UserInputType.Touch) then
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             update(input)
         end
     end)
+end
+
+-- Create Toggle Button (ปุ่มสำหรับ hide/show UI - สำคัญสำหรับ Mobile)
+function Utility:CreateToggleButton(screenGui, mainFrame, windowInstance)
+    local toggleButton = self:Create("TextButton", {
+        Name = "ToggleButton",
+        Parent = screenGui,
+        BackgroundColor3 = Theme.Accent,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 10, 0.5, -25),
+        Size = UDim2.new(0, 50, 0, 50),
+        Text = "",
+        ZIndex = 100,
+        AutoButtonColor = false
+    })
+    
+    self:Create("UICorner", {
+        CornerRadius = UDim.new(1, 0),
+        Parent = toggleButton
+    })
+    
+    -- Icon
+    local icon = self:Create("ImageLabel", {
+        Parent = toggleButton,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0.5, -12, 0.5, -12),
+        Size = UDim2.new(0, 24, 0, 24),
+        Image = "rbxassetid://10734924532", -- Menu icon
+        ImageColor3 = Theme.TextColor
+    })
+    
+    toggleButton.ImageLabel = icon -- Store reference
+    
+    -- Shadow effect
+    local shadow = self:Create("Frame", {
+        Parent = toggleButton,
+        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+        BackgroundTransparency = 0.5,
+        Position = UDim2.new(0, 2, 0, 2),
+        Size = UDim2.new(1, 0, 1, 0),
+        ZIndex = 99
+    })
+    
+    self:Create("UICorner", {
+        CornerRadius = UDim.new(1, 0),
+        Parent = shadow
+    })
+    
+    -- Make toggle button draggable (สำหรับ Mobile)
+    self:MakeDraggable(toggleButton, toggleButton)
+    
+    -- Click handler
+    toggleButton.MouseButton1Click:Connect(function()
+        windowInstance:Toggle()
+    end)
+    
+    -- Hover effects
+    toggleButton.MouseEnter:Connect(function()
+        self:Tween(toggleButton, {
+            BackgroundColor3 = Theme.AccentHover,
+            Size = UDim2.new(0, 55, 0, 55)
+        }, 0.2)
+    end)
+    
+    toggleButton.MouseLeave:Connect(function()
+        self:Tween(toggleButton, {
+            BackgroundColor3 = Theme.Accent,
+            Size = UDim2.new(0, 50, 0, 50)
+        }, 0.2)
+    end)
+    
+    return toggleButton
 end
 
 -- Main UI Library
@@ -367,10 +488,34 @@ function UILibrary:CreateWindow(title)
     -- Make window draggable
     Utility:MakeDraggable(windowInstance.MainFrame, windowInstance.TopBar)
     
+    -- Create Toggle Button (สำหรับ Mobile)
+    windowInstance.ToggleButton = Utility:CreateToggleButton(windowInstance.ScreenGui, windowInstance.MainFrame, windowInstance)
+    
+    -- Keybind สำหรับ PC (กด RightShift เพื่อ toggle)
+    if UserInputService.KeyboardEnabled then
+        UserInputService.InputBegan:Connect(function(input, processed)
+            if not processed and input.KeyCode == Enum.KeyCode.RightShift then
+                windowInstance:Toggle()
+            end
+        end)
+    end
+    
+    -- Auto-scale UI for mobile screens
+    if not UserInputService.KeyboardEnabled then
+        -- ปรับขนาด UI สำหรับหน้าจอมือถือ
+        local screenSize = workspace.CurrentCamera.ViewportSize
+        local scaleFactor = math.min(screenSize.X / 800, screenSize.Y / 600, 1)
+        
+        windowInstance.MainFrame.Size = UDim2.new(0, 800 * scaleFactor, 0, 600 * scaleFactor)
+        windowInstance.MainFrame.Position = UDim2.new(0.5, -400 * scaleFactor, 0.5, -300 * scaleFactor)
+        windowInstance.OriginalSize = windowInstance.MainFrame.Size
+        windowInstance.OriginalPosition = windowInstance.MainFrame.Position
+    end
+    
     -- Animate entrance
     windowInstance.MainFrame.Position = UDim2.new(0.5, -400, 1.5, 0)
     Utility:Tween(windowInstance.MainFrame, {
-        Position = UDim2.new(0.5, -400, 0.5, -300)
+        Position = windowInstance.OriginalPosition or UDim2.new(0.5, -400, 0.5, -300)
     }, 0.5)
     
     if windowInstance.Blur then
@@ -572,6 +717,38 @@ function Window:ToggleFullscreen()
     self.IsFullscreen = not self.IsFullscreen
 end
 
+-- Toggle UI visibility (สำหรับ Mobile และ Keybind)
+function Window:Toggle()
+    if self.MainFrame.Visible then
+        self:Hide()
+    else
+        self:Show()
+    end
+end
+
+function Window:Hide()
+    Utility:Tween(self.MainFrame, {
+        Position = UDim2.new(0.5, -400, 1.5, 0)
+    }, 0.3)
+    task.wait(0.3)
+    self.MainFrame.Visible = false
+    
+    if self.ToggleButton then
+        Utility:Tween(self.ToggleButton.ImageLabel, {Rotation = 180}, 0.3)
+    end
+end
+
+function Window:Show()
+    self.MainFrame.Visible = true
+    Utility:Tween(self.MainFrame, {
+        Position = self.OriginalPosition or UDim2.new(0.5, -400, 0.5, -300)
+    }, 0.3)
+    
+    if self.ToggleButton then
+        Utility:Tween(self.ToggleButton.ImageLabel, {Rotation = 0}, 0.3)
+    end
+end
+
 function Window:Destroy()
     if self.Blur then
         Utility:Tween(self.Blur, {Size = 0}, 0.3)
@@ -579,9 +756,18 @@ function Window:Destroy()
         self.Blur:Destroy()
     end
     
+    -- Animate UI exit
     Utility:Tween(self.MainFrame, {
         Position = UDim2.new(0.5, -400, 1.5, 0)
     }, 0.3)
+    
+    -- Animate toggle button exit
+    if self.ToggleButton then
+        Utility:Tween(self.ToggleButton, {
+            Position = UDim2.new(-0.2, 0, 0.5, -25),
+            Transparency = 1
+        }, 0.3)
+    end
     
     task.wait(0.3)
     self.ScreenGui:Destroy()

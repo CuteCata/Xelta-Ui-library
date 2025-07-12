@@ -1,58 +1,110 @@
--- UILibrary Part 1: Core Framework
--- A mobile-compatible, elegant UI library for Roblox
--- Author: Expert UI Developer
--- Version: 1.0.0 (Part 1)
+--[[
+    Modern UI Library - Part 1 (Core System)
+    โครงสร้างหลักและระบบพื้นฐานที่สามารถ extend ได้ใน Part อื่นๆ
+    
+    วิธีใช้งาน:
+    local UI = loadstring(game:HttpGet("URL"))()
+    local Window = UI:CreateWindow("Script Name")
+    local Tab = Window:CreateTab("Home", "house")
+    Tab:CreateButton("Click Me", function() print("Clicked!") end)
+]]
 
-local UILibrary = {}
-local Windows = {}
-
--- Services
-local Players = game:GetService("Players")
+-- Services และ Dependencies
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
 
--- Constants
-local THEME = {
-    -- Dark luxurious color palette
-    Background = Color3.fromRGB(15, 15, 20),
-    SecondaryBackground = Color3.fromRGB(20, 20, 28),
-    TertiaryBackground = Color3.fromRGB(25, 25, 35),
+-- ตรวจสอบ Executor และหา Parent ที่เหมาะสม
+local function GetUIParent()
+    local success, result = pcall(function()
+        return CoreGui
+    end)
     
-    Accent = Color3.fromRGB(88, 101, 242),
-    AccentDark = Color3.fromRGB(71, 82, 196),
+    if not success then
+        -- สำหรับ Mobile Executors ที่อาจไม่รองรับ CoreGui
+        return Players.LocalPlayer:WaitForChild("PlayerGui")
+    end
     
-    Text = Color3.fromRGB(240, 240, 245),
-    SubText = Color3.fromRGB(160, 160, 170),
-    
-    Border = Color3.fromRGB(35, 35, 45),
-    Shadow = Color3.fromRGB(0, 0, 0),
-    
-    Success = Color3.fromRGB(67, 181, 129),
-    Warning = Color3.fromRGB(250, 179, 127),
-    Error = Color3.fromRGB(240, 71, 71),
+    return CoreGui
+end
+
+-- Lucide Icons (จะเพิ่มเต็มใน Part 2)
+local Icons = {
+    ["house"] = "rbxassetid://10734919336",
+    ["zap"] = "rbxassetid://10734950309",
+    ["x"] = "rbxassetid://10734950309",
+    ["minus"] = "rbxassetid://10734896206",
+    ["square"] = "rbxassetid://10734898547"
 }
 
--- Utility Functions
-local function CreateTween(instance, properties, duration, style, direction)
-    duration = duration or 0.3
-    style = style or Enum.EasingStyle.Quart
-    direction = direction or Enum.EasingDirection.Out
+-- Theme Configuration
+local Theme = {
+    -- สีหลัก
+    Background = Color3.fromRGB(15, 15, 15),
+    SecondaryBackground = Color3.fromRGB(20, 20, 20),
+    TertiaryBackground = Color3.fromRGB(25, 25, 25),
+    
+    -- สีข้อความ
+    TextColor = Color3.fromRGB(255, 255, 255),
+    DimmedText = Color3.fromRGB(180, 180, 180),
+    
+    -- สี Accent
+    Accent = Color3.fromRGB(88, 101, 242),
+    AccentHover = Color3.fromRGB(71, 82, 196),
+    
+    -- อื่นๆ
+    Border = Color3.fromRGB(35, 35, 35),
+    Shadow = Color3.fromRGB(0, 0, 0),
+    
+    -- Animation Settings
+    AnimationSpeed = 0.3,
+    EasingStyle = Enum.EasingStyle.Quart,
+    EasingDirection = Enum.EasingDirection.Out
+}
+
+-- Utility Functions Module
+local Utility = {}
+
+-- สร้าง Instance พร้อม Properties
+function Utility:Create(instanceType, properties, children)
+    local instance = Instance.new(instanceType)
+    
+    -- Set Properties
+    for property, value in pairs(properties or {}) do
+        instance[property] = value
+    end
+    
+    -- Add Children
+    for _, child in pairs(children or {}) do
+        child.Parent = instance
+    end
+    
+    return instance
+end
+
+-- Animation Helper
+function Utility:Tween(instance, properties, duration)
+    duration = duration or Theme.AnimationSpeed
     
     local tween = TweenService:Create(
         instance,
-        TweenInfo.new(duration, style, direction),
+        TweenInfo.new(duration, Theme.EasingStyle, Theme.EasingDirection),
         properties
     )
+    
     tween:Play()
     return tween
 end
 
-local function MakeDraggable(frame, handle)
-    handle = handle or frame
-    local dragging, dragInput, dragStart, startPos
-    local touch = nil
+-- Make Draggable (รองรับทั้ง PC และ Mobile)
+function Utility:MakeDraggable(frame, dragHandle)
+    dragHandle = dragHandle or frame
+    
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
     
     local function update(input)
         local delta = input.Position - dragStart
@@ -64,7 +116,7 @@ local function MakeDraggable(frame, handle)
         )
     end
     
-    handle.InputBegan:Connect(function(input)
+    dragHandle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or 
            input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
@@ -79,292 +131,512 @@ local function MakeDraggable(frame, handle)
         end
     end)
     
-    handle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-    
     UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
+                        input.UserInputType == Enum.UserInputType.Touch) then
             update(input)
         end
     end)
 end
 
--- Placeholder for Lucide icons
-local function lucideIcon(iconName)
-    -- This will be replaced with actual Lucide icon implementation
-    return "rbxasset://textures/ui/GuiImagePlaceholder.png"
-end
+-- Main UI Library
+local UILibrary = {}
+UILibrary.__index = UILibrary
 
--- Main Window Creation
-function UILibrary:CreateWindow(config)
-    config = config or {}
-    local windowName = config.Name or "UI Library"
-    local windowIcon = config.Icon or "lucide:layout-dashboard"
+-- Window Class (ใช้ Metatable เพื่อให้ extend ได้)
+local Window = {}
+Window.__index = Window
+
+-- Tab Class (ใช้ Metatable เพื่อให้ extend ได้)
+local Tab = {}
+Tab.__index = Tab
+
+-- สร้าง UI Library Instance
+function UILibrary:CreateWindow(title)
+    -- ตรวจสอบและลบ UI เก่า
+    local existingUI = GetUIParent():FindFirstChild("ModernUILibrary")
+    if existingUI then
+        existingUI:Destroy()
+    end
     
-    -- Create ScreenGui
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "UILibrary_" .. windowName:gsub("%s+", "")
-    screenGui.ResetOnSpawn = false
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.Parent = CoreGui
+    -- สร้าง Window Object ด้วย Metatable
+    local windowInstance = setmetatable({}, Window)
+    
+    -- สร้าง Main Frame
+    windowInstance.ScreenGui = Utility:Create("ScreenGui", {
+        Name = "ModernUILibrary",
+        Parent = GetUIParent(),
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+        ResetOnSpawn = false
+    })
+    
+    -- Background Blur (เฉพาะ PC)
+    if UserInputService.KeyboardEnabled then
+        windowInstance.Blur = Utility:Create("BlurEffect", {
+            Size = 0,
+            Parent = game:GetService("Lighting")
+        })
+    end
     
     -- Main Window Frame
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Name = "MainWindow"
-    mainFrame.Size = UDim2.new(0, 800, 0, 500)
-    mainFrame.Position = UDim2.new(0.5, -400, 0.5, -250)
-    mainFrame.BackgroundColor3 = THEME.Background
-    mainFrame.BorderSizePixel = 0
-    mainFrame.ClipsDescendants = true
-    mainFrame.Parent = screenGui
+    windowInstance.MainFrame = Utility:Create("Frame", {
+        Name = "MainWindow",
+        Parent = windowInstance.ScreenGui,
+        BackgroundColor3 = Theme.Background,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0.5, -400, 0.5, -300),
+        Size = UDim2.new(0, 800, 0, 600),
+        ClipsDescendants = true
+    })
     
-    -- Add corner rounding
-    local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 12)
-    mainCorner.Parent = mainFrame
+    -- เพิ่ม Corner Radius
+    Utility:Create("UICorner", {
+        CornerRadius = UDim.new(0, 12),
+        Parent = windowInstance.MainFrame
+    })
     
-    -- Add shadow
-    local shadow = Instance.new("ImageLabel")
-    shadow.Name = "Shadow"
-    shadow.BackgroundTransparency = 1
-    shadow.Position = UDim2.new(0, -20, 0, -20)
-    shadow.Size = UDim2.new(1, 40, 1, 40)
-    shadow.Image = "rbxassetid://1316045217"
-    shadow.ImageColor3 = THEME.Shadow
-    shadow.ImageTransparency = 0.8
-    shadow.ScaleType = Enum.ScaleType.Slice
-    shadow.SliceCenter = Rect.new(10, 10, 118, 118)
-    shadow.Parent = mainFrame
+    -- เพิ่ม Shadow
+    windowInstance.Shadow = Utility:Create("ImageLabel", {
+        Name = "Shadow",
+        Parent = windowInstance.MainFrame,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, -20, 0, -20),
+        Size = UDim2.new(1, 40, 1, 40),
+        ZIndex = -1,
+        Image = "rbxassetid://10734919336", -- จะเปลี่ยนเป็น shadow image ใน Part 2
+        ImageColor3 = Theme.Shadow,
+        ImageTransparency = 0.5,
+        ScaleType = Enum.ScaleType.Slice,
+        SliceCenter = Rect.new(20, 20, 280, 280)
+    })
     
     -- Top Bar
-    local topBar = Instance.new("Frame")
-    topBar.Name = "TopBar"
-    topBar.Size = UDim2.new(1, 0, 0, 40)
-    topBar.BackgroundColor3 = THEME.SecondaryBackground
-    topBar.BorderSizePixel = 0
-    topBar.Parent = mainFrame
+    windowInstance.TopBar = Utility:Create("Frame", {
+        Name = "TopBar",
+        Parent = windowInstance.MainFrame,
+        BackgroundColor3 = Theme.SecondaryBackground,
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 0, 40)
+    })
     
-    -- Make window draggable via top bar
-    MakeDraggable(mainFrame, topBar)
+    -- Title Label (มุมซ้ายบน)
+    windowInstance.TitleLabel = Utility:Create("TextLabel", {
+        Name = "Title",
+        Parent = windowInstance.TopBar,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 15, 0, 0),
+        Size = UDim2.new(0.5, -15, 1, 0),
+        Font = Enum.Font.Gotham,
+        Text = title or "Modern UI",
+        TextColor3 = Theme.TextColor,
+        TextScaled = false,
+        TextSize = 16,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
     
-    -- Brand Section (Top Left)
-    local brandFrame = Instance.new("Frame")
-    brandFrame.Name = "BrandFrame"
-    brandFrame.Size = UDim2.new(0, 200, 1, 0)
-    brandFrame.BackgroundTransparency = 1
-    brandFrame.Parent = topBar
+    -- Control Buttons Container (มุมขวาบน)
+    windowInstance.ControlButtons = Utility:Create("Frame", {
+        Name = "ControlButtons",
+        Parent = windowInstance.TopBar,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(1, -120, 0, 5),
+        Size = UDim2.new(0, 110, 0, 30)
+    })
     
-    local brandIcon = Instance.new("ImageLabel")
-    brandIcon.Name = "BrandIcon"
-    brandIcon.Size = UDim2.new(0, 24, 0, 24)
-    brandIcon.Position = UDim2.new(0, 12, 0.5, -12)
-    brandIcon.BackgroundTransparency = 1
-    brandIcon.Image = lucideIcon(windowIcon)
-    brandIcon.ImageColor3 = THEME.Accent
-    brandIcon.Parent = brandFrame
-    
-    local brandText = Instance.new("TextLabel")
-    brandText.Name = "BrandText"
-    brandText.Size = UDim2.new(1, -50, 1, 0)
-    brandText.Position = UDim2.new(0, 45, 0, 0)
-    brandText.BackgroundTransparency = 1
-    brandText.Text = windowName
-    brandText.TextColor3 = THEME.Text
-    brandText.TextScaled = false
-    brandText.TextSize = 16
-    brandText.Font = Enum.Font.Gotham
-    brandText.TextXAlignment = Enum.TextXAlignment.Left
-    brandText.Parent = brandFrame
-    
-    -- Window Controls (Top Right)
-    local controlsFrame = Instance.new("Frame")
-    controlsFrame.Name = "ControlsFrame"
-    controlsFrame.Size = UDim2.new(0, 120, 1, 0)
-    controlsFrame.Position = UDim2.new(1, -120, 0, 0)
-    controlsFrame.BackgroundTransparency = 1
-    controlsFrame.Parent = topBar
-    
-    local controlsLayout = Instance.new("UIListLayout")
-    controlsLayout.FillDirection = Enum.FillDirection.Horizontal
-    controlsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-    controlsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    controlsLayout.Padding = UDim.new(0, 8)
-    controlsLayout.Parent = controlsFrame
-    
-    -- Control buttons
-    local function createControlButton(name, icon, callback)
-        local button = Instance.new("TextButton")
-        button.Name = name .. "Button"
-        button.Size = UDim2.new(0, 28, 0, 28)
-        button.BackgroundColor3 = THEME.TertiaryBackground
-        button.BorderSizePixel = 0
-        button.Text = ""
-        button.Parent = controlsFrame
+    -- สร้างปุ่มควบคุม
+    local function createControlButton(name, icon, position, callback)
+        local button = Utility:Create("TextButton", {
+            Name = name,
+            Parent = windowInstance.ControlButtons,
+            BackgroundColor3 = Theme.TertiaryBackground,
+            BorderSizePixel = 0,
+            Position = position,
+            Size = UDim2.new(0, 30, 0, 30),
+            Text = "",
+            AutoButtonColor = false
+        })
         
-        local buttonCorner = Instance.new("UICorner")
-        buttonCorner.CornerRadius = UDim.new(0, 6)
-        buttonCorner.Parent = button
+        Utility:Create("UICorner", {
+            CornerRadius = UDim.new(0, 6),
+            Parent = button
+        })
         
-        local buttonIcon = Instance.new("ImageLabel")
-        buttonIcon.Size = UDim2.new(0, 16, 0, 16)
-        buttonIcon.Position = UDim2.new(0.5, -8, 0.5, -8)
-        buttonIcon.BackgroundTransparency = 1
-        buttonIcon.Image = lucideIcon(icon)
-        buttonIcon.ImageColor3 = THEME.SubText
-        buttonIcon.Parent = button
+        local iconLabel = Utility:Create("ImageLabel", {
+            Parent = button,
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0.5, -8, 0.5, -8),
+            Size = UDim2.new(0, 16, 0, 16),
+            Image = Icons[icon] or "",
+            ImageColor3 = Theme.DimmedText
+        })
         
+        button.MouseButton1Click:Connect(callback)
+        
+        -- Hover Effect
         button.MouseEnter:Connect(function()
-            CreateTween(button, {BackgroundColor3 = THEME.Border}, 0.2)
-            CreateTween(buttonIcon, {ImageColor3 = THEME.Text}, 0.2)
+            Utility:Tween(button, {BackgroundColor3 = Theme.Border}, 0.2)
+            Utility:Tween(iconLabel, {ImageColor3 = Theme.TextColor}, 0.2)
         end)
         
         button.MouseLeave:Connect(function()
-            CreateTween(button, {BackgroundColor3 = THEME.TertiaryBackground}, 0.2)
-            CreateTween(buttonIcon, {ImageColor3 = THEME.SubText}, 0.2)
+            Utility:Tween(button, {BackgroundColor3 = Theme.TertiaryBackground}, 0.2)
+            Utility:Tween(iconLabel, {ImageColor3 = Theme.DimmedText}, 0.2)
         end)
-        
-        button.MouseButton1Click:Connect(callback)
         
         return button
     end
     
-    local minimizeBtn = createControlButton("Minimize", "lucide:minus", function()
-        -- Will implement minimize logic
-    end)
-    minimizeBtn.LayoutOrder = 1
+    -- Minimize Button
+    windowInstance.MinimizeButton = createControlButton(
+        "Minimize", "minus", UDim2.new(0, 0, 0, 0),
+        function()
+            windowInstance:Minimize()
+        end
+    )
     
-    local fullscreenBtn = createControlButton("Fullscreen", "lucide:maximize", function()
-        -- Will implement fullscreen logic
-    end)
-    fullscreenBtn.LayoutOrder = 2
+    -- Fullscreen Button  
+    windowInstance.FullscreenButton = createControlButton(
+        "Fullscreen", "square", UDim2.new(0, 35, 0, 0),
+        function()
+            windowInstance:ToggleFullscreen()
+        end
+    )
     
-    local closeBtn = createControlButton("Close", "lucide:x", function()
-        screenGui:Destroy()
-    end)
-    closeBtn.LayoutOrder = 3
+    -- Close Button
+    windowInstance.CloseButton = createControlButton(
+        "Close", "x", UDim2.new(0, 70, 0, 0),
+        function()
+            windowInstance:Destroy()
+        end
+    )
     
-    -- Content Area
-    local contentArea = Instance.new("Frame")
-    contentArea.Name = "ContentArea"
-    contentArea.Size = UDim2.new(1, 0, 1, -40)
-    contentArea.Position = UDim2.new(0, 0, 0, 40)
-    contentArea.BackgroundTransparency = 1
-    contentArea.Parent = mainFrame
+    -- Content Container
+    windowInstance.ContentContainer = Utility:Create("Frame", {
+        Name = "ContentContainer",
+        Parent = windowInstance.MainFrame,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 0, 0, 40),
+        Size = UDim2.new(1, 0, 1, -40)
+    })
     
-    -- Left Sidebar for Tabs
-    local sidebar = Instance.new("ScrollingFrame")
-    sidebar.Name = "Sidebar"
-    sidebar.Size = UDim2.new(0, 200, 1, 0)
-    sidebar.BackgroundColor3 = THEME.SecondaryBackground
-    sidebar.BorderSizePixel = 0
-    sidebar.ScrollBarThickness = 4
-    sidebar.ScrollBarImageColor3 = THEME.Border
-    sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
-    sidebar.Parent = contentArea
+    -- Tab Container (ด้านซ้าย)
+    windowInstance.TabContainer = Utility:Create("ScrollingFrame", {
+        Name = "TabContainer",
+        Parent = windowInstance.ContentContainer,
+        BackgroundColor3 = Theme.SecondaryBackground,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 0, 0, 0),
+        Size = UDim2.new(0, 200, 1, 0),
+        ScrollBarThickness = 2,
+        ScrollBarImageColor3 = Theme.Accent,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        ScrollingDirection = Enum.ScrollingDirection.Y
+    })
     
-    local sidebarLayout = Instance.new("UIListLayout")
-    sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    sidebarLayout.Padding = UDim.new(0, 8)
-    sidebarLayout.Parent = sidebar
+    Utility:Create("UIListLayout", {
+        Parent = windowInstance.TabContainer,
+        Padding = UDim.new(0, 5),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
     
-    local sidebarPadding = Instance.new("UIPadding")
-    sidebarPadding.PaddingTop = UDim.new(0, 12)
-    sidebarPadding.PaddingBottom = UDim.new(0, 12)
-    sidebarPadding.PaddingLeft = UDim.new(0, 12)
-    sidebarPadding.PaddingRight = UDim.new(0, 12)
-    sidebarPadding.Parent = sidebar
+    Utility:Create("UIPadding", {
+        Parent = windowInstance.TabContainer,
+        PaddingTop = UDim.new(0, 10),
+        PaddingLeft = UDim.new(0, 10),
+        PaddingRight = UDim.new(0, 10)
+    })
     
-    -- Tab Content Area
-    local tabContent = Instance.new("Frame")
-    tabContent.Name = "TabContent"
-    tabContent.Size = UDim2.new(1, -200, 1, 0)
-    tabContent.Position = UDim2.new(0, 200, 0, 0)
-    tabContent.BackgroundColor3 = THEME.Background
-    tabContent.BorderSizePixel = 0
-    tabContent.Parent = contentArea
+    -- Tab Content Container
+    windowInstance.TabContent = Utility:Create("Frame", {
+        Name = "TabContent",
+        Parent = windowInstance.ContentContainer,
+        BackgroundColor3 = Theme.Background,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 200, 0, 0),
+        Size = UDim2.new(1, -200, 1, 0)
+    })
     
-    -- Floating Toggle Button
-    local toggleButton = Instance.new("TextButton")
-    toggleButton.Name = "ToggleButton"
-    toggleButton.Size = UDim2.new(0, 50, 0, 50)
-    toggleButton.Position = UDim2.new(0, 20, 0.5, -25)
-    toggleButton.BackgroundColor3 = THEME.Accent
-    toggleButton.BorderSizePixel = 0
-    toggleButton.Text = ""
-    toggleButton.Parent = screenGui
+    -- Initialize properties
+    windowInstance.Tabs = {}
+    windowInstance.ActiveTab = nil
+    windowInstance.IsFullscreen = false
+    windowInstance.IsMinimized = false
+    windowInstance.OriginalSize = windowInstance.MainFrame.Size
+    windowInstance.OriginalPosition = windowInstance.MainFrame.Position
     
-    local toggleCorner = Instance.new("UICorner")
-    toggleCorner.CornerRadius = UDim.new(0.5, 0)
-    toggleCorner.Parent = toggleButton
+    -- Make window draggable
+    Utility:MakeDraggable(windowInstance.MainFrame, windowInstance.TopBar)
     
-    local toggleIcon = Instance.new("ImageLabel")
-    toggleIcon.Size = UDim2.new(0, 24, 0, 24)
-    toggleIcon.Position = UDim2.new(0.5, -12, 0.5, -12)
-    toggleIcon.BackgroundTransparency = 1
-    toggleIcon.Image = lucideIcon("lucide:panel-left")
-    toggleIcon.ImageColor3 = THEME.Text
-    toggleIcon.Parent = toggleButton
+    -- Animate entrance
+    windowInstance.MainFrame.Position = UDim2.new(0.5, -400, 1.5, 0)
+    Utility:Tween(windowInstance.MainFrame, {
+        Position = UDim2.new(0.5, -400, 0.5, -300)
+    }, 0.5)
     
-    -- Make toggle button draggable
-    MakeDraggable(toggleButton)
-    
-    -- Toggle functionality
-    local isVisible = true
-    toggleButton.MouseButton1Click:Connect(function()
-        isVisible = not isVisible
-        mainFrame.Visible = isVisible
-        toggleIcon.Image = lucideIcon(isVisible and "lucide:panel-left" or "lucide:panel-right")
-    end)
-    
-    -- Window object
-    local Window = {
-        _frame = mainFrame,
-        _sidebar = sidebar,
-        _tabContent = tabContent,
-        _tabs = {},
-        _activeTab = nil
-    }
-    
-    -- Tab creation method (placeholder for Part 1)
-    function Window:CreateTab(name, icon)
-        icon = icon or "lucide:file"
-        
-        local Tab = {
-            Name = name,
-            Icon = icon,
-            _elements = {}
-        }
-        
-        -- Tab button in sidebar
-        local tabButton = Instance.new("TextButton")
-        tabButton.Name = name .. "Tab"
-        tabButton.Size = UDim2.new(1, 0, 0, 40)
-        tabButton.BackgroundColor3 = THEME.TertiaryBackground
-        tabButton.BorderSizePixel = 0
-        tabButton.Text = ""
-        tabButton.Parent = self._sidebar
-        
-        local tabCorner = Instance.new("UICorner")
-        tabCorner.CornerRadius = UDim.new(0, 8)
-        tabCorner.Parent = tabButton
-        
-        -- Tab will be fully implemented in Part 2
-        
-        table.insert(self._tabs, Tab)
-        return Tab
+    if windowInstance.Blur then
+        Utility:Tween(windowInstance.Blur, {Size = 20}, 0.5)
     end
     
-    -- Placeholder methods for Part 2
-    function Window:Destroy()
-        screenGui:Destroy()
-    end
-    
-    table.insert(Windows, Window)
-    return Window
+    return windowInstance
 end
 
+-- Window Methods
+function Window:CreateTab(name, icon)
+    local tabInstance = setmetatable({}, Tab)
+    
+    -- Tab Button
+    tabInstance.Button = Utility:Create("TextButton", {
+        Name = name,
+        Parent = self.TabContainer,
+        BackgroundColor3 = Theme.TertiaryBackground,
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, -10, 0, 40),
+        Text = "",
+        AutoButtonColor = false
+    })
+    
+    Utility:Create("UICorner", {
+        CornerRadius = UDim.new(0, 8),
+        Parent = tabInstance.Button
+    })
+    
+    -- Tab Content Layout
+    local tabLayout = Utility:Create("Frame", {
+        Name = "TabLayout",
+        Parent = tabInstance.Button,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0)
+    })
+    
+    -- Icon
+    if icon and Icons[icon] then
+        tabInstance.Icon = Utility:Create("ImageLabel", {
+            Parent = tabLayout,
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 10, 0.5, -10),
+            Size = UDim2.new(0, 20, 0, 20),
+            Image = Icons[icon],
+            ImageColor3 = Theme.DimmedText
+        })
+    end
+    
+    -- Tab Name
+    tabInstance.Label = Utility:Create("TextLabel", {
+        Parent = tabLayout,
+        BackgroundTransparency = 1,
+        Position = icon and UDim2.new(0, 40, 0, 0) or UDim2.new(0, 10, 0, 0),
+        Size = icon and UDim2.new(1, -50, 1, 0) or UDim2.new(1, -20, 1, 0),
+        Font = Enum.Font.Gotham,
+        Text = name,
+        TextColor3 = Theme.DimmedText,
+        TextSize = 14,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
+    
+    -- Tab Page
+    tabInstance.Page = Utility:Create("ScrollingFrame", {
+        Name = name .. "Page",
+        Parent = self.TabContent,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 0, 0, 0),
+        Size = UDim2.new(1, 0, 1, 0),
+        ScrollBarThickness = 2,
+        ScrollBarImageColor3 = Theme.Accent,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        ScrollingDirection = Enum.ScrollingDirection.Y,
+        Visible = false
+    })
+    
+    Utility:Create("UIListLayout", {
+        Parent = tabInstance.Page,
+        Padding = UDim.new(0, 10),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    Utility:Create("UIPadding", {
+        Parent = tabInstance.Page,
+        PaddingTop = UDim.new(0, 20),
+        PaddingLeft = UDim.new(0, 20),
+        PaddingRight = UDim.new(0, 20),
+        PaddingBottom = UDim.new(0, 20)
+    })
+    
+    -- Tab Click Handler
+    tabInstance.Button.MouseButton1Click:Connect(function()
+        self:SelectTab(tabInstance)
+    end)
+    
+    -- Hover Effects
+    tabInstance.Button.MouseEnter:Connect(function()
+        if self.ActiveTab ~= tabInstance then
+            Utility:Tween(tabInstance.Button, {
+                BackgroundColor3 = Theme.Border
+            }, 0.2)
+        end
+    end)
+    
+    tabInstance.Button.MouseLeave:Connect(function()
+        if self.ActiveTab ~= tabInstance then
+            Utility:Tween(tabInstance.Button, {
+                BackgroundColor3 = Theme.TertiaryBackground
+            }, 0.2)
+        end
+    end)
+    
+    -- Initialize
+    tabInstance.Window = self
+    tabInstance.Elements = {}
+    
+    -- Add to tabs list
+    table.insert(self.Tabs, tabInstance)
+    
+    -- Select first tab
+    if #self.Tabs == 1 then
+        self:SelectTab(tabInstance)
+    end
+    
+    -- Update canvas size
+    self.TabContainer.CanvasSize = UDim2.new(0, 0, 0, #self.Tabs * 45)
+    
+    return tabInstance
+end
+
+function Window:SelectTab(tab)
+    -- Deselect previous tab
+    if self.ActiveTab then
+        self.ActiveTab.Page.Visible = false
+        Utility:Tween(self.ActiveTab.Button, {
+            BackgroundColor3 = Theme.TertiaryBackground
+        }, 0.2)
+        Utility:Tween(self.ActiveTab.Label, {
+            TextColor3 = Theme.DimmedText
+        }, 0.2)
+        if self.ActiveTab.Icon then
+            Utility:Tween(self.ActiveTab.Icon, {
+                ImageColor3 = Theme.DimmedText
+            }, 0.2)
+        end
+    end
+    
+    -- Select new tab
+    self.ActiveTab = tab
+    tab.Page.Visible = true
+    Utility:Tween(tab.Button, {
+        BackgroundColor3 = Theme.Accent
+    }, 0.2)
+    Utility:Tween(tab.Label, {
+        TextColor3 = Theme.TextColor
+    }, 0.2)
+    if tab.Icon then
+        Utility:Tween(tab.Icon, {
+            ImageColor3 = Theme.TextColor
+        }, 0.2)
+    end
+end
+
+function Window:Minimize()
+    if self.IsMinimized then
+        -- Restore
+        self.ContentContainer.Visible = true
+        Utility:Tween(self.MainFrame, {
+            Size = self.OriginalSize
+        }, 0.3)
+    else
+        -- Minimize
+        self.OriginalSize = self.MainFrame.Size
+        self.ContentContainer.Visible = false
+        Utility:Tween(self.MainFrame, {
+            Size = UDim2.new(0, 400, 0, 40)
+        }, 0.3)
+    end
+    self.IsMinimized = not self.IsMinimized
+end
+
+function Window:ToggleFullscreen()
+    if self.IsFullscreen then
+        -- Exit fullscreen
+        Utility:Tween(self.MainFrame, {
+            Size = self.OriginalSize,
+            Position = self.OriginalPosition
+        }, 0.3)
+    else
+        -- Enter fullscreen
+        self.OriginalSize = self.MainFrame.Size
+        self.OriginalPosition = self.MainFrame.Position
+        Utility:Tween(self.MainFrame, {
+            Size = UDim2.new(1, -20, 1, -20),
+            Position = UDim2.new(0, 10, 0, 10)
+        }, 0.3)
+    end
+    self.IsFullscreen = not self.IsFullscreen
+end
+
+function Window:Destroy()
+    if self.Blur then
+        Utility:Tween(self.Blur, {Size = 0}, 0.3)
+        task.wait(0.3)
+        self.Blur:Destroy()
+    end
+    
+    Utility:Tween(self.MainFrame, {
+        Position = UDim2.new(0.5, -400, 1.5, 0)
+    }, 0.3)
+    
+    task.wait(0.3)
+    self.ScreenGui:Destroy()
+end
+
+-- Tab Methods (Basic - จะเพิ่มใน Part 2)
+function Tab:CreateButton(text, callback)
+    local button = {}
+    
+    button.Frame = Utility:Create("Frame", {
+        Parent = self.Page,
+        BackgroundColor3 = Theme.SecondaryBackground,
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 0, 45)
+    })
+    
+    Utility:Create("UICorner", {
+        CornerRadius = UDim.new(0, 8),
+        Parent = button.Frame
+    })
+    
+    button.Button = Utility:Create("TextButton", {
+        Parent = button.Frame,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        Font = Enum.Font.Gotham,
+        Text = text,
+        TextColor3 = Theme.TextColor,
+        TextSize = 14
+    })
+    
+    button.Button.MouseButton1Click:Connect(callback or function() end)
+    
+    -- Hover effect
+    button.Frame.MouseEnter:Connect(function()
+        Utility:Tween(button.Frame, {
+            BackgroundColor3 = Theme.TertiaryBackground
+        }, 0.2)
+    end)
+    
+    button.Frame.MouseLeave:Connect(function()
+        Utility:Tween(button.Frame, {
+            BackgroundColor3 = Theme.SecondaryBackground
+        }, 0.2)
+    end)
+    
+    -- Update canvas size
+    local listLayout = self.Page:FindFirstChildOfClass("UIListLayout")
+    if listLayout then
+        self.Page.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 40)
+    end
+    
+    table.insert(self.Elements, button)
+    return button
+end
+
+-- ส่งคืน Library
 return UILibrary

@@ -1,6 +1,6 @@
--- Roblox UI Library v1.0
+-- Roblox UI Library v1.1
 -- A modern, mobile-compatible UI library with clean architecture
--- Similar to Rayfield but with custom specifications
+-- Part 2: Added floating toggle button and enhanced mobile support
 
 local UILibrary = {}
 UILibrary.__index = UILibrary
@@ -174,7 +174,7 @@ function Window:CreateTab(name, icon)
         Parent = tabButton
     })
     
-    -- Tab content scroll frame
+    -- Tab content scroll frame with enhanced mobile support
     local scrollFrame = CreateInstance("ScrollingFrame", {
         Name = "ScrollFrame",
         BackgroundTransparency = 1,
@@ -182,8 +182,11 @@ function Window:CreateTab(name, icon)
         Position = UDim2.new(0, 10, 0, 10),
         Size = UDim2.new(1, -20, 1, -20),
         CanvasSize = UDim2.new(0, 0, 0, 0),
-        ScrollBarThickness = 4,
+        ScrollBarThickness = IsMobile() and 6 or 4,
         ScrollBarImageColor3 = COLORS.Border,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
+        ScrollBarImageTransparency = 0.5,
+        ElasticBehavior = Enum.ElasticBehavior.Always,
         Parent = tabFrame
     })
     
@@ -193,9 +196,9 @@ function Window:CreateTab(name, icon)
         Parent = scrollFrame
     })
     
-    -- Auto-resize canvas
+    -- Auto-resize canvas with padding
     contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 10)
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
     end)
     
     -- Tab selection logic
@@ -422,6 +425,35 @@ function Window:ToggleFullscreen()
     end
 end
 
+-- New method: Toggle UI visibility
+function Window:ToggleUI()
+    self.UIHidden = not self.UIHidden
+    
+    if self.UIHidden then
+        -- Hide UI with animation
+        Tween(self.MainFrame, {
+            Position = UDim2.new(0.5, -250, -1, -400)
+        }, TWEEN_INFO.Medium)
+        
+        -- Change toggle button appearance
+        Tween(self.ToggleButton, {
+            BackgroundColor3 = COLORS.AccentHover,
+            Size = UDim2.new(0, 50, 0, 50)
+        })
+    else
+        -- Show UI with animation
+        Tween(self.MainFrame, {
+            Position = self.OriginalPosition or UDim2.new(0.5, -250, 0.5, -175)
+        }, TWEEN_INFO.Medium)
+        
+        -- Reset toggle button appearance
+        Tween(self.ToggleButton, {
+            BackgroundColor3 = COLORS.Accent,
+            Size = UDim2.new(0, 45, 0, 45)
+        })
+    end
+end
+
 function Window:Destroy()
     self.ScreenGui:Destroy()
 end
@@ -434,7 +466,8 @@ function UILibrary:CreateWindow(options)
         Tabs = {},
         CurrentTab = nil,
         Minimized = false,
-        Fullscreen = false
+        Fullscreen = false,
+        UIHidden = false
     }, Window)
     
     -- Create ScreenGui
@@ -455,8 +488,26 @@ function UILibrary:CreateWindow(options)
         Parent = window.ScreenGui
     })
     
+    -- Store original position for toggle functionality
+    window.OriginalPosition = window.MainFrame.Position
+    
     CreateInstance("UICorner", {
         CornerRadius = UDim.new(0, 8),
+        Parent = window.MainFrame
+    })
+    
+    -- Add drop shadow for depth
+    local shadow = CreateInstance("ImageLabel", {
+        Name = "Shadow",
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, -15, 0, -15),
+        Size = UDim2.new(1, 30, 1, 30),
+        Image = "rbxasset://textures/ui/GuiImagePlaceholder.png",
+        ImageColor3 = Color3.new(0, 0, 0),
+        ImageTransparency = 0.5,
+        ScaleType = Enum.ScaleType.Slice,
+        SliceCenter = Rect.new(10, 10, 10, 10),
+        ZIndex = -1,
         Parent = window.MainFrame
     })
     
@@ -598,7 +649,7 @@ function UILibrary:CreateWindow(options)
         Parent = window.TabContainer
     })
     
-    -- Tab List
+    -- Tab List with enhanced scrolling
     window.TabList = CreateInstance("ScrollingFrame", {
         Name = "TabList",
         BackgroundTransparency = 1,
@@ -606,15 +657,23 @@ function UILibrary:CreateWindow(options)
         Position = UDim2.new(0, 5, 0, 5),
         Size = UDim2.new(1, -5, 1, -10),
         CanvasSize = UDim2.new(0, 0, 0, 0),
-        ScrollBarThickness = 0,
+        ScrollBarThickness = 3,
+        ScrollBarImageColor3 = COLORS.Border,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
+        ElasticBehavior = Enum.ElasticBehavior.Always,
         Parent = window.TabContainer
     })
     
-    CreateInstance("UIListLayout", {
+    local tabListLayout = CreateInstance("UIListLayout", {
         Padding = UDim.new(0, 5),
         SortOrder = Enum.SortOrder.LayoutOrder,
         Parent = window.TabList
     })
+    
+    -- Auto-resize tab list canvas
+    tabListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        window.TabList.CanvasSize = UDim2.new(0, 0, 0, tabListLayout.AbsoluteContentSize.Y + 10)
+    end)
     
     -- Content Container
     window.ContentContainer = CreateInstance("Frame", {
@@ -635,6 +694,66 @@ function UILibrary:CreateWindow(options)
         Parent = window.ContentContainer
     })
     
+    -- Floating Toggle Button
+    window.ToggleButton = CreateInstance("TextButton", {
+        Name = "ToggleButton",
+        BackgroundColor3 = COLORS.Accent,
+        BorderSizePixel = 0,
+        Position = IsMobile() and UDim2.new(0, 20, 0.5, -22.5) or UDim2.new(0, 20, 1, -65),
+        Size = UDim2.new(0, 45, 0, 45),
+        AutoButtonColor = false,
+        Font = Enum.Font.GothamBold,
+        Text = "UI",
+        TextColor3 = COLORS.Text,
+        TextSize = 16,
+        ZIndex = 100,
+        Parent = window.ScreenGui
+    })
+    
+    CreateInstance("UICorner", {
+        CornerRadius = UDim.new(0.5, 0),
+        Parent = window.ToggleButton
+    })
+    
+    -- Toggle button shadow
+    local toggleShadow = CreateInstance("Frame", {
+        Name = "Shadow",
+        BackgroundColor3 = Color3.new(0, 0, 0),
+        BackgroundTransparency = 0.7,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 2, 0, 2),
+        Size = UDim2.new(1, 0, 1, 0),
+        ZIndex = 99,
+        Parent = window.ToggleButton
+    })
+    
+    CreateInstance("UICorner", {
+        CornerRadius = UDim.new(0.5, 0),
+        Parent = toggleShadow
+    })
+    
+    -- Toggle button hover effects
+    window.ToggleButton.MouseEnter:Connect(function()
+        Tween(window.ToggleButton, {
+            BackgroundColor3 = COLORS.AccentHover,
+            Size = UDim2.new(0, 50, 0, 50)
+        })
+    end)
+    
+    window.ToggleButton.MouseLeave:Connect(function()
+        if not window.UIHidden then
+            Tween(window.ToggleButton, {
+                BackgroundColor3 = COLORS.Accent,
+                Size = UDim2.new(0, 45, 0, 45)
+            })
+        end
+    end)
+    
+    -- Make toggle button draggable on desktop
+    if not IsMobile() then
+        MakeDraggable(window.ToggleButton, window.ToggleButton)
+    end
+    
     -- Button Connections
     minimizeBtn.MouseButton1Click:Connect(function()
         window:Minimize()
@@ -648,9 +767,28 @@ function UILibrary:CreateWindow(options)
         window:Destroy()
     end)
     
-    -- Make draggable (desktop only)
+    window.ToggleButton.MouseButton1Click:Connect(function()
+        window:ToggleUI()
+    end)
+    
+    -- Make main window draggable (desktop only)
     if not IsMobile() then
         MakeDraggable(window.MainFrame, topBar)
+    end
+    
+    -- Mobile optimization: Add touch scrolling support
+    if IsMobile() then
+        -- Increase scroll sensitivity for mobile
+        window.TabList.ScrollingEnabled = true
+        window.TabList.ScrollBarThickness = 6
+        
+        -- Add padding for better touch targets
+        for _, obj in pairs(window.MainFrame:GetDescendants()) do
+            if obj:IsA("TextButton") then
+                obj.Size = UDim2.new(obj.Size.X.Scale, obj.Size.X.Offset, 
+                    obj.Size.Y.Scale, math.max(obj.Size.Y.Offset, 35))
+            end
+        end
     end
     
     return window

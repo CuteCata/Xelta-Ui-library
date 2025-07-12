@@ -167,8 +167,9 @@ function Window:_CreateGUI()
     titleText.BackgroundTransparency = 1
     titleText.Text = self.Name
     titleText.TextColor3 = self.Library.Theme.Text
-    titleText.TextScaled = true
+    titleText.TextSize = 16
     titleText.TextXAlignment = Enum.TextXAlignment.Left
+    titleText.TextYAlignment = Enum.TextYAlignment.Center
     titleText.Font = Enum.Font.Gotham
     titleText.Parent = titleBar
     
@@ -252,8 +253,8 @@ function Window:_CreateControlButtons(parent)
         buttonCorner.Parent = button
         
         local icon = Instance.new("ImageLabel")
-        icon.Size = UDim2.new(0, 20, 0, 20)
-        icon.Position = UDim2.new(0.5, -10, 0.5, -10)
+        icon.Size = UDim2.new(0, 16, 0, 16)
+        icon.Position = UDim2.new(0.5, -8, 0.5, -8)
         icon.BackgroundTransparency = 1
         icon.Image = LUCIDE_ICONS[buttonData.Icon] or ""
         icon.ImageColor3 = self.Library.Theme.Text
@@ -287,8 +288,8 @@ function Window:_CreateMobileToggle()
     toggleCorner.Parent = toggleButton
     
     local menuIcon = Instance.new("ImageLabel")
-    menuIcon.Size = UDim2.new(0, 30, 0, 30)
-    menuIcon.Position = UDim2.new(0.5, -15, 0.5, -15)
+    menuIcon.Size = UDim2.new(0, 24, 0, 24)
+    menuIcon.Position = UDim2.new(0.5, -12, 0.5, -12)
     menuIcon.BackgroundTransparency = 1
     menuIcon.Image = LUCIDE_ICONS.menu
     menuIcon.ImageColor3 = self.Library.Theme.Text
@@ -412,13 +413,13 @@ function Tab:_CreateGUI()
     local iconSize = 0
     if self.Icon and LUCIDE_ICONS[self.Icon] then
         local icon = Instance.new("ImageLabel")
-        icon.Size = UDim2.new(0, 24, 0, 24)
-        icon.Position = UDim2.new(0, 10, 0.5, -12)
+        icon.Size = UDim2.new(0, 20, 0, 20)
+        icon.Position = UDim2.new(0, 10, 0.5, -10)
         icon.BackgroundTransparency = 1
         icon.Image = LUCIDE_ICONS[self.Icon]
         icon.ImageColor3 = self.Window.Library.Theme.TextDark
         icon.Parent = tabLayout
-        iconSize = 34
+        iconSize = 30
     end
     
     -- Tab Text
@@ -428,8 +429,9 @@ function Tab:_CreateGUI()
     tabText.BackgroundTransparency = 1
     tabText.Text = self.Name
     tabText.TextColor3 = self.Window.Library.Theme.TextDark
-    tabText.TextScaled = true
+    tabText.TextSize = 14
     tabText.TextXAlignment = Enum.TextXAlignment.Left
+    tabText.TextYAlignment = Enum.TextYAlignment.Center
     tabText.Font = Enum.Font.Gotham
     tabText.Parent = tabLayout
     
